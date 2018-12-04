@@ -399,11 +399,36 @@ void process_file(char *filename) {
       kraken_output_ss.str("");
       classified_output_ss.str("");
       unclassified_output_ss.str("");
-      for (size_t j = 0; j < work_unit.size(); j++) {
-        my_total_classified += 
-            classify_sequence( work_unit[j], kraken_output_ss,
-                           classified_output_ss, unclassified_output_ss,
-                           my_taxon_counts);
+      for(BARCODE){ // TODO
+
+        unordered_map<uint32_t, uint32_t> bc_hit_counts;
+        for (READ_IN_BARCODE) { // TODO
+          unordered_map<uint32_t, uint32_t> read_hit_counts = 
+              get_hit_count_map( work_unit[j], kraken_output_ss,
+                             classified_output_ss, unclassified_output_ss,
+                             my_taxon_counts);
+          for (auto it = read_hit_counts.begin();
+                it != read_hit_counts.end(); ++it) {
+            uint32_t taxon = it->first;
+            bc_hit_counts[taxon]++;
+          }
+        }
+
+        for (READ_IN_BARCODE) { // TODO
+          read_hit_counts = foobar; // TODO
+          my_total_classified += 
+            uint32_t call = 
+              classify_hit_count_map(work_unit[j], kraken_output_ss,
+                              classified_output_ss, unclassified_output_ss,
+                              my_taxon_counts, read_hit_counts, bc_hit_counts);
+
+            my_total_classified += handle_call(work_unit[j], kraken_output_ss,
+                              classified_output_ss, unclassified_output_ss, call);
+        }
+
+
+
+
       }
 
       #pragma omp critical(write_output)
@@ -595,10 +620,11 @@ unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstr
   return hit_counts;
 }
 
-bool classify_hit_count_map(DNASequence &dna, ostringstream &koss,
+uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
-                       unordered_map<uint32_t, uint32_t> hit_counts) {
+                       unordered_map<uint32_t, uint32_t> read_hit_counts,
+                       unordered_map<uint32_t, uint32_t> bc_hit_counts) {
   uint32_t call = 0;
   if (Map_UIDs) {
     if (Quick_mode) {
@@ -612,10 +638,15 @@ bool classify_hit_count_map(DNASequence &dna, ostringstream &koss,
     if (Quick_mode)
       call = hits >= Minimum_hit_count ? taxon : 0;
     else
-      call = resolve_tree(hit_counts, Parent_map);
+      call = resolve_tree(hit_counts, Parent_map, bc_hit_counts);
   }
-
+  // TODO USE BC COUNTS TO PROMOTE CALL
   my_taxon_counts[call].incrementReadCount();
+  return call;
+}
+
+bool handle_call(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss, uint32_t call) {
 
   if (Print_unclassified && !call) 
     print_sequence(&uoss, dna);

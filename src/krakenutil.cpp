@@ -111,8 +111,9 @@ namespace kraken {
 
   // Tree resolution: take all hit taxa (plus ancestors), then
   // return leaf of highest weighted leaf-to-root path.
-  uint32_t resolve_tree(const unordered_map<uint32_t, uint32_t> &hit_counts,
-                        const unordered_map<uint32_t, uint32_t> &parent_map) {
+  uint32_t resolve_tree(const unordered_map<uint32_t, uint32_t> &read_hit_counts,
+                        const unordered_map<uint32_t, uint32_t> &parent_map,
+                        const unordered_map<uint32_t, uint32_t> &bc_hit_counts) {
   
     set<uint32_t> max_taxa;
     uint32_t max_taxon = 0, max_score = 0;
@@ -155,6 +156,7 @@ namespace kraken {
 
     // If two LTR paths are tied for max, return LCA of all
     if (! max_taxa.empty()) {
+      // TODO USE BC AS TIEBREAKER
       set<uint32_t>::iterator sit = max_taxa.begin();
       max_taxon = *sit;
       for (sit++; sit != max_taxa.end(); sit++)
