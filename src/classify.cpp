@@ -537,9 +537,10 @@ string hitlist_string_depr(const vector<uint32_t> &taxa)
 }
 */
 
-bool classify_sequence(DNASequence &dna, ostringstream &koss,
+unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
+
   vector<uint32_t> taxa;
   vector<uint8_t> ambig_list;
   unordered_map<uint32_t, uint32_t> hit_counts;
@@ -591,7 +592,13 @@ bool classify_sequence(DNASequence &dna, ostringstream &koss,
       //append_hitlist_string(hitlist_string, last_taxon, last_counter, taxon);
     }
   }
+  return hit_counts;
+}
 
+bool classify_hit_count_map(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss,
+                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
+                       unordered_map<uint32_t, uint32_t> hit_counts) {
   uint32_t call = 0;
   if (Map_UIDs) {
     if (Quick_mode) {
@@ -652,6 +659,15 @@ bool classify_sequence(DNASequence &dna, ostringstream &koss,
 
   koss << "\n";
   return call;
+}
+
+
+bool classify_sequence(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss,
+                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
+  unordered_map<uint32_t, uint32_t> hit_counts;
+  hit_counts = get_hit_count_map(dna, koss, coss, uoss, my_taxon_counts)
+  return classify_hit_count_map(dna, koss, coss, uoss, my_taxon_counts, hit_counts)
 }
 
 set<uint32_t> get_ancestry(uint32_t taxon) {
