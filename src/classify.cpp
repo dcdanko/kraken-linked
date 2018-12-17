@@ -668,19 +668,10 @@ bool handle_call(DNASequence &dna, ostringstream &koss,
   }
   koss << dna.id << '\t' << call << '\t' << dna.seq.size() << '\t';
 
-  else {
-    if (taxa.empty())
-      koss << "0:0";
-    else
-      koss << hitlist_string(taxa, ambig_list);
-    //if (hitlist_string.empty() && last_counter == 0)
-    //  koss << "0:0";
-    //else {
-    //  koss << hitlist_string
-    //       << (last_taxon == ambig_taxon? "A" :  std::to_string(last_taxon))
-    //       << ':' << std::to_string(last_counter);
-    //}
-  }
+  if (taxa.empty())
+    koss << "0:0";
+  else
+    koss << hitlist_string(taxa, ambig_list);
 
   if (Print_sequence)
       koss << "\t" << dna.seq;
