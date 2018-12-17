@@ -77,7 +77,7 @@ namespace kraken {
       return dna;
     }
 
-    size_t bc_start = line.find('BX:');
+    size_t bc_start = line.find("BX:");
     if (bc_start == -1){
       return dna;
     }

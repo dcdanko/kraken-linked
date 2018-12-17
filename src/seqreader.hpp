@@ -41,7 +41,7 @@ namespace kraken {
 
   class BCReader {
     public:
-    BCReader(std::sting filename);
+    BCReader(std::string filename);
     std::vector<DNASequence> next_bc();
     bool is_valid();
 
