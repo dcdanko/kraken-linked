@@ -36,9 +36,9 @@ uint32_t lca(const std::unordered_map<uint32_t, uint32_t> &parent_map, uint32_t 
 
 
   // Resolve classification tree
-uint32_t resolve_tree(const unordered_map<uint32_t, uint32_t> &read_hit_counts,
-                        const unordered_map<uint32_t, uint32_t> &parent_map,
-                        const unordered_map<uint32_t, uint32_t> &bc_hit_counts);
+uint32_t resolve_tree(const std::unordered_map<uint32_t, uint32_t> &read_hit_counts,
+                        const std::unordered_map<uint32_t, uint32_t> &parent_map,
+                        const std::unordered_map<uint32_t, uint32_t> &bc_hit_counts);
   class KmerScanner {
     public:
 
