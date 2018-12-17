@@ -31,7 +31,7 @@ namespace kraken {
   vector<DNASequence> BCReader::next_bc() {
     vector<DNASequence> bc;
     DNASequence next_seq;
-    while (cur_seq.id == NULL){
+    while (cur_seq == NULL){
       cur_seq = bc_fastq_reader.next_sequence();
     }
     bc.push_back(cur_seq);
