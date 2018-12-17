@@ -39,17 +39,6 @@ namespace kraken {
     virtual ~DNASequenceReader() {}
   };
 
-  class BCReader {
-    public:
-    BCReader(std::string filename);
-    std::vector<DNASequence> next_bc();
-    bool is_valid();
-
-    private:
-    BCFastqReader bc_fastq_reader;
-    DNASequence cur_seq;
-  }
-
   class BCFastqReader : public DNASequenceReader {
     public:
     BCFastqReader(std::string filename);
@@ -60,6 +49,17 @@ namespace kraken {
     std::ifstream file;
     bool valid;
   };
+
+  class BCReader {
+    public:
+    BCReader(std::string filename);
+    std::vector<DNASequence> next_bc();
+    bool is_valid();
+
+    private:
+    BCFastqReader bc_fastq_reader;
+    DNASequence cur_seq;
+  }
 }
 
 #endif
