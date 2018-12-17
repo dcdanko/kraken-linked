@@ -62,7 +62,7 @@ set<uint32_t> get_ancestry(uint32_t taxon);
 void report_stats(struct timeval time1, struct timeval time2);
 double get_seconds(struct timeval time1, struct timeval time2);
 
-tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts);
 uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
