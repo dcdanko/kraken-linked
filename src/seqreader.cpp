@@ -37,7 +37,7 @@ namespace kraken {
     bc.push_back(cur_seq);
     next_seq = bc_fastq_reader.next_sequence();
     while(next_seq.bc == cur_seq.bc){
-      bc.push_back(next_seq)
+      bc.push_back(next_seq);
       next_seq = bc_fastq_reader.next_sequence();
     }
     cur_seq = next_seq;
