@@ -54,9 +54,6 @@ using namespace kraken;
 void parse_command_line(int argc, char **argv);
 void usage(int exit_code=EX_USAGE);
 void process_file(char *filename);
-bool classify_sequence(DNASequence &dna, ostringstream &koss,
-                       ostringstream &coss, ostringstream &uoss,
-                       unordered_map<uint32_t, READCOUNTS>&);
 inline void print_sequence(ostringstream* oss_ptr, const DNASequence& dna);
 string hitlist_string(const vector<uint32_t> &taxa, const vector<char>& ambig_list);
 
@@ -400,6 +397,7 @@ void process_file(char *filename) {
       unordered_map<uint32_t, uint32_t> bc_hit_counts;
       vector<unordered_map<uint32_t, uint32_t>> all_read_hit_counts;
       vector<vector<uint32_t>> all_read_taxa;
+      vector<vector<uint8_t>> all_read_ambig;
       for (size_t i = 0; i < cur_bc.size(); i++) {
         tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> read_hit_counts_tuple = get_hit_count_map(
           cur_bc[i],
@@ -409,10 +407,10 @@ void process_file(char *filename) {
           my_taxon_counts
         );
         unordered_map<uint32_t, uint32_t> read_hit_counts = get<0>(read_hit_counts_tuple);
-        vector<uint32_t> read_taxa = get<1>(read_hit_counts_tuple);
-
         all_read_hit_counts.push_back(read_hit_counts);
-        all_read_taxa.push_back(read_taxa);
+        all_read_taxa.push_back(get<1>(read_hit_counts_tuple));
+        all_read_ambig.push_back(get<2>(read_hit_counts_tuple))
+
         for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
           uint32_t taxon = it->first;
           bc_hit_counts[taxon]++;
@@ -436,6 +434,7 @@ void process_file(char *filename) {
           classified_output_ss,
           unclassified_output_ss,
           all_read_taxa[i],
+          all_read_ambig[i],
           call
         );
       }
@@ -520,7 +519,11 @@ string hitlist_string(const vector<uint32_t> &taxa, const vector<uint8_t> &ambig
 }
 
 
-tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<
+  unordered_map<uint32_t, uint32_t>,
+  vector<uint32_t>,
+  vector<uint8_t>
+  > get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
 
@@ -570,7 +573,7 @@ tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> get_hit_count_map(DNA
       taxa.push_back(taxon);
     }
   }
-  return make_tuple(hit_counts, taxa);
+  return make_tuple(hit_counts, taxa, ambig_list);
 }
 
 uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
@@ -597,7 +600,7 @@ uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
 
 bool handle_call(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
-                       vector<uint32_t> taxa, uint32_t call) {
+                       vector<uint32_t> taxa, vector<uint8_t> ambig_list, uint32_t call) {
 
   if (Print_unclassified && !call) 
     print_sequence(&uoss, dna);
@@ -631,14 +634,6 @@ bool handle_call(DNASequence &dna, ostringstream &koss,
   return call;
 }
 
-
-bool classify_sequence(DNASequence &dna, ostringstream &koss,
-                       ostringstream &coss, ostringstream &uoss,
-                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
-  unordered_map<uint32_t, uint32_t> hit_counts;
-  hit_counts = get_hit_count_map(dna, koss, coss, uoss, my_taxon_counts)
-  return classify_hit_count_map(dna, koss, coss, uoss, my_taxon_counts, hit_counts)
-}
 
 set<uint32_t> get_ancestry(uint32_t taxon) {
   set<uint32_t> path;
