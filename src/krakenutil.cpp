@@ -119,14 +119,14 @@ namespace kraken {
     uint32_t max_taxon = 0, max_score = 0;
 
     // Sum each taxon's LTR path
-    for (auto it = hit_counts.begin();
-         it != hit_counts.end(); ++it) {
+    for (auto it = read_hit_counts.begin();
+         it != read_hit_counts.end(); ++it) {
       uint32_t taxon = it->first;
       uint32_t node = taxon;
       uint32_t score = 0;
       while (node > 0) {
-        auto it2 = hit_counts.find(node);
-        if (it2 != hit_counts.end()) {
+        auto it2 = read_hit_counts.find(node);
+        if (it2 != read_hit_counts.end()) {
           score += it2->second;
         }
         auto node_it = parent_map.find(node);
