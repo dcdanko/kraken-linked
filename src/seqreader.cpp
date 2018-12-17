@@ -78,10 +78,10 @@ namespace kraken {
     }
 
     size_t bc_start = line.find("BX:");
-    if (bc_start == -1){
+    if (bc_start == string::npos){
       return dna;
     }
-    size_t bc_end = line.find(' ', pos=bc_start);
+    size_t bc_end = line.find(' ', bc_start);
     dna.bc = line.substr(bc_start, bc_end - bc_start);
 
     dna.header_line = line.substr(1);
