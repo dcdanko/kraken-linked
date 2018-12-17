@@ -76,7 +76,7 @@ uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
                        unordered_map<uint32_t, uint32_t> bc_hit_counts);
 bool handle_call(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
-                       vector<uint32_t> taxa, uint32_t call);
+                       vector<uint32_t> taxa, vector<uint8_t> ambig_list, uint32_t call);
 unordered_map<uint32_t, READCOUNTS> taxon_counts; // stats per taxon
 
 int Num_threads = 1;
