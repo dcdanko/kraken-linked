@@ -634,14 +634,14 @@ uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
       cerr << "Quick mode not available when mapping UIDs" << endl;
       exit(1);
     } else {
-      call = resolve_uids3(hit_counts, Parent_map, Uid_dict,
+      call = resolve_uids3(read_hit_counts, Parent_map, Uid_dict,
         UID_to_TaxID_map_file.ptr(), UID_to_TaxID_map_file.size());
     }
   } else {
     if (Quick_mode)
       call = hits >= Minimum_hit_count ? taxon : 0;
     else
-      call = resolve_tree(hit_counts, Parent_map, bc_hit_counts);
+      call = resolve_tree(read_hit_counts, Parent_map, bc_hit_counts);
   }
   // TODO USE BC COUNTS TO PROMOTE CALL
   my_taxon_counts[call].incrementReadCount();
