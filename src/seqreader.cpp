@@ -25,7 +25,7 @@ using namespace std;
 namespace kraken {
 
   BCReader::BCReader(string filename) {
-    BCReader(filename);
+    BCFastqReader::BCFastqReader(filename);
   }
 
   vector<DNASequence> BCReader::next_bc() {
