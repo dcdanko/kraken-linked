@@ -45,7 +45,7 @@ namespace kraken {
     std::vector<DNASequence> next_bc();
     bool is_valid();
 
-    private();
+    private:
     BCFastqReader bc_fastq_reader;
     DNASequence cur_seq;
   }
