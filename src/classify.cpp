@@ -73,7 +73,8 @@ uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
                        unordered_map<uint32_t, uint32_t> read_hit_counts,
                        unordered_map<uint32_t, uint32_t> bc_hit_counts);
-
+bool handle_call(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss, uint32_t call);
 unordered_map<uint32_t, READCOUNTS> taxon_counts; // stats per taxon
 
 int Num_threads = 1;
