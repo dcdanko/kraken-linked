@@ -64,6 +64,16 @@ string hitlist_string(const vector<uint32_t> &taxa, const vector<char>& ambig_li
 set<uint32_t> get_ancestry(uint32_t taxon);
 void report_stats(struct timeval time1, struct timeval time2);
 double get_seconds(struct timeval time1, struct timeval time2);
+
+unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss,
+                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts);
+uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss,
+                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
+                       unordered_map<uint32_t, uint32_t> read_hit_counts,
+                       unordered_map<uint32_t, uint32_t> bc_hit_counts);
+
 unordered_map<uint32_t, READCOUNTS> taxon_counts; // stats per taxon
 
 int Num_threads = 1;
