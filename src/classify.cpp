@@ -62,7 +62,11 @@ set<uint32_t> get_ancestry(uint32_t taxon);
 void report_stats(struct timeval time1, struct timeval time2);
 double get_seconds(struct timeval time1, struct timeval time2);
 
-tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<
+  unordered_map<uint32_t, uint32_t>,
+  vector<uint32_t>,
+  vector<uint8_t>
+> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts);
 uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
@@ -399,7 +403,11 @@ void process_file(char *filename) {
       vector<vector<uint32_t>> all_read_taxa;
       vector<vector<uint8_t>> all_read_ambig;
       for (size_t i = 0; i < cur_bc.size(); i++) {
-        tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> read_hit_counts_tuple = get_hit_count_map(
+        tuple<
+          unordered_map<uint32_t, uint32_t>,
+          vector<uint32_t>,
+          vector<uint8_t>
+        > read_hit_counts_tuple = get_hit_count_map(
           cur_bc[i],
           kraken_output_ss,
           classified_output_ss,
@@ -519,7 +527,11 @@ string hitlist_string(const vector<uint32_t> &taxa, const vector<uint8_t> &ambig
 }
 
 
-tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<
+  unordered_map<uint32_t, uint32_t>,
+  vector<uint32_t>,
+  vector<uint8_t>
+> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
 
