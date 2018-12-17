@@ -59,7 +59,7 @@ namespace kraken {
     private:
     BCFastqReader bc_fastq_reader;
     DNASequence cur_seq;
-  }
+  };
 }
 
 #endif
