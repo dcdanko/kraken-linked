@@ -447,7 +447,7 @@ void process_file(char *filename) {
           (*Classified_output) << classified_output_ss.str();
         if (Print_unclassified)
           (*Unclassified_output) << unclassified_output_ss.str();
-        total_sequences += work_unit.size();
+        total_sequences += cur_bc.size();
         total_bases += total_nt;
         //if (Print_Progress && total_sequences % 100000 < work_unit.size()) 
         if (Print_Progress) {  
