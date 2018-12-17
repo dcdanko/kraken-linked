@@ -668,9 +668,6 @@ bool handle_call(DNASequence &dna, ostringstream &koss,
   }
   koss << dna.id << '\t' << call << '\t' << dna.seq.size() << '\t';
 
-  if (Quick_mode) {
-    koss << "Q:" << hits;
-  }
   else {
     if (taxa.empty())
       koss << "0:0";
