@@ -45,7 +45,7 @@ namespace kraken {
   }
 
   bool BCReader::is_valid() {
-    return BCFastqReader.is_valid()
+    return bc_fastq_reader.is_valid();
   }
 
   BCFastqReader::BCFastqReader(string filename) {
