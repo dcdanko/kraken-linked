@@ -417,7 +417,7 @@ void process_file(char *filename) {
         unordered_map<uint32_t, uint32_t> read_hit_counts = get<0>(read_hit_counts_tuple);
         all_read_hit_counts.push_back(read_hit_counts);
         all_read_taxa.push_back(get<1>(read_hit_counts_tuple));
-        all_read_ambig.push_back(get<2>(read_hit_counts_tuple))
+        all_read_ambig.push_back(get<2>(read_hit_counts_tuple));
 
         for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
           uint32_t taxon = it->first;
