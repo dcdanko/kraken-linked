@@ -408,7 +408,7 @@ void process_file(char *filename) {
           my_taxon_counts
         );
         unordered_map<uint32_t, uint32_t> read_hit_counts = get<0>(read_hit_counts_tuple);
-        vector<uint32_t> read_taxa = get<1>(read_hit_counts);
+        vector<uint32_t> read_taxa = get<1>(read_hit_counts_tuple);
 
         all_read_hit_counts.push_back(read_hit_counts);
         all_read_taxa.push_back(read_taxa);
