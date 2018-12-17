@@ -365,70 +365,62 @@ void report_stats(struct timeval time1, struct timeval time2) {
 
 void process_file(char *filename) {
   string file_str(filename);
-  DNASequenceReader *reader;
-  DNASequence dna;
+  BCReader *reader;
 
-  if (Fastq_input)
-    reader = new FastqReader(file_str);
-  else
-    reader = new FastaReader(file_str);
-
+  reader = new BCReader(file_str);
   #pragma omp parallel
   {
-    vector<DNASequence> work_unit;
+    vector<DNASequence> cur_bc;
     ostringstream kraken_output_ss, classified_output_ss, unclassified_output_ss;
 
     while (reader->is_valid()) {
-      work_unit.clear();
+      cur_bc.clear();
       size_t total_nt = 0;
-      #pragma omp critical(get_input)
-      {
-        while (total_nt < Work_unit_size) {
-          dna = reader->next_sequence();
-          if (! reader->is_valid())
-            break;
-          work_unit.push_back(dna);
-          total_nt += dna.seq.size();
-        }
-      }
-      if (total_nt == 0)
-        break;
+
+      cur_bc = reader.next_bc();
       
-      unordered_map<uint32_t, READCOUNTS> my_taxon_counts;
+      unordered_map<uint32_t, cur_bc.size()> my_taxon_counts;
       uint64_t my_total_classified = 0;
       kraken_output_ss.str("");
       classified_output_ss.str("");
       unclassified_output_ss.str("");
-      for(BARCODE){ // TODO
 
-        unordered_map<uint32_t, uint32_t> bc_hit_counts;
-        for (READ_IN_BARCODE) { // TODO
-          unordered_map<uint32_t, uint32_t> read_hit_counts = 
-              get_hit_count_map( work_unit[j], kraken_output_ss,
-                             classified_output_ss, unclassified_output_ss,
-                             my_taxon_counts);
-          for (auto it = read_hit_counts.begin();
-                it != read_hit_counts.end(); ++it) {
-            uint32_t taxon = it->first;
-            bc_hit_counts[taxon]++;
-          }
+      unordered_map<uint32_t, uint32_t> bc_hit_counts;
+      vector<unordered_map<uint32_t, uint32_t>> all_read_hit_counts;
+      for (size_t i = 0; i < cur_bc.size(); i++) {
+        unordered_map<uint32_t, uint32_t> read_hit_counts = get_hit_count_map(
+          cur_bc[i],
+          kraken_output_ss,
+          classified_output_ss,
+          unclassified_output_ss,
+          my_taxon_counts
+        );
+        all_read_hit_counts.push_back(read_hit_counts);
+
+        for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
+          uint32_t taxon = it->first;
+          bc_hit_counts[taxon]++;
         }
+      }
 
-        for (READ_IN_BARCODE) { // TODO
-          read_hit_counts = foobar; // TODO
-          my_total_classified += 
-            uint32_t call = 
-              classify_hit_count_map(work_unit[j], kraken_output_ss,
-                              classified_output_ss, unclassified_output_ss,
-                              my_taxon_counts, read_hit_counts, bc_hit_counts);
+      for (size_t i = 0; i < cur_bc.size(); i++) {
+        uint32_t call = classify_hit_count_map(
+          cur_bc[i],
+          kraken_output_ss,
+          classified_output_ss,
+          unclassified_output_ss,
+          my_taxon_counts,
+          all_read_hit_counts[i],
+          bc_hit_counts
+        );
 
-            my_total_classified += handle_call(work_unit[j], kraken_output_ss,
-                              classified_output_ss, unclassified_output_ss, call);
-        }
-
-
-
-
+        my_total_classified += handle_call(
+          cur_bc[i],
+          kraken_output_ss,
+          classified_output_ss,
+          unclassified_output_ss,
+          call
+        );
       }
 
       #pragma omp critical(write_output)

@@ -23,7 +23,32 @@
 using namespace std;
 
 namespace kraken {
-  FastaReader::FastaReader(string filename) {
+
+  BCReader::BCReader(string filename) {
+    BCReader(filename);
+  }
+
+  vector<DNASequence> BCReader::next_bc() {
+    vector<DNASequence> bc;
+    DNASequence next_seq;
+    while (!cur_seq){
+      cur_seq = bc_fastq_reader.next_sequence();
+    }
+    bc.push_back(cur_seq);
+    next_seq = bc_fastq_reader.next_sequence();
+    while(next_seq.bc == cur_seq.bc){
+      bc.push_back(next_seq)
+      next_seq = bc_fastq_reader.next_sequence();
+    }
+    cur_seq = next_seq;
+    return bc;
+  }
+
+  bool BCReader::is_valid() {
+    return BCFastqReader.is_valid()
+  }
+
+  BCFastqReader::BCFastqReader(string filename) {
     file.open(filename.c_str());
     if (file.rdstate() & ifstream::failbit) {
       err(EX_NOINPUT, "can't open %s", filename.c_str());
@@ -31,66 +56,7 @@ namespace kraken {
     valid = true;
   }
 
-  DNASequence FastaReader::next_sequence() {
-    DNASequence dna;
-
-    if (! file.good()) {
-      valid = false;
-      return dna;
-    }
-    string line;
-
-    if (linebuffer.empty()) {
-      getline(file, line);
-    }
-    else {
-      line = linebuffer;
-      linebuffer.clear();
-    }
-
-    if (line[0] != '>') {
-      warnx("malformed fasta file - expected header char > not found");
-      valid = false;
-      return dna;
-    }
-    dna.header_line = line.substr(1);
-    istringstream seq_id(dna.header_line);
-    seq_id >> dna.id;
-    
-    ostringstream seq_ss;
-
-    while (file.good()) {
-      getline(file, line);
-      if (line[0] == '>') {
-        linebuffer = line;
-        break;
-      }
-      else {
-        seq_ss << line;
-      }
-    }
-    dna.seq = seq_ss.str();
-
-    if (dna.seq.empty()) {
-      valid = true; // set_lcas handles empty sequences
-    }
-
-    return dna;
-  }
-
-  bool FastaReader::is_valid() {
-    return valid;
-  }
-
-  FastqReader::FastqReader(string filename) {
-    file.open(filename.c_str());
-    if (file.rdstate() & ifstream::failbit) {
-      err(EX_NOINPUT, "can't open %s", filename.c_str());
-    }
-    valid = true;
-  }
-
-  DNASequence FastqReader::next_sequence() {
+  DNASequence BCFastqReader::next_sequence() {
     DNASequence dna;
 
     if (! valid || ! file.good()) {
@@ -110,10 +76,19 @@ namespace kraken {
       valid = false;
       return dna;
     }
+
+    size_t bc_start = line.find('BX:');
+    if (bc_start == -1){
+      return dna;
+    }
+    size_t bc_end = line.find(' ', pos=bc_start);
+    dna.bc = line.substr(bc_start, bc_end - bc_start);
+
     dna.header_line = line.substr(1);
     istringstream line_ss(dna.header_line);
-    
     line_ss >> dna.id;
+
+
     getline(file, dna.seq);
 
     getline(file, line);
@@ -128,7 +103,9 @@ namespace kraken {
     return dna;
   }
 
-  bool FastqReader::is_valid() {
+  bool BCFastqReader::is_valid() {
     return valid;
   }
+
+
 } // namespace
