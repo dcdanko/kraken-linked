@@ -519,11 +519,7 @@ string hitlist_string(const vector<uint32_t> &taxa, const vector<uint8_t> &ambig
 }
 
 
-tuple<
-  unordered_map<uint32_t, uint32_t>,
-  vector<uint32_t>,
-  vector<uint8_t>
-  > get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
 
