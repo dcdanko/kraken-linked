@@ -379,7 +379,7 @@ void process_file(char *filename) {
 
       cur_bc = reader->next_bc();
       
-      unordered_map<uint32_t, cur_bc.size()> my_taxon_counts;
+      unordered_map<uint32_t, READCOUNTS> my_taxon_counts;
       uint64_t my_total_classified = 0;
       kraken_output_ss.str("");
       classified_output_ss.str("");
