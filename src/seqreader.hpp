@@ -39,6 +39,29 @@ namespace kraken {
     virtual ~DNASequenceReader() {}
   };
 
+  class FastaReader : public DNASequenceReader {
+    public:
+    FastaReader(std::string filename);
+    DNASequence next_sequence();
+    bool is_valid();
+
+    private:
+    std::ifstream file;
+    std::string linebuffer;
+    bool valid;
+  };
+
+  class FastqReader : public DNASequenceReader {
+    public:
+    FastqReader(std::string filename);
+    DNASequence next_sequence();
+    bool is_valid();
+
+    private:
+    std::ifstream file;
+    bool valid;
+  };
+
   class BCFastqReader : public DNASequenceReader {
     public:
     BCFastqReader(std::string filename);
