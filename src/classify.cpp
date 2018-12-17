@@ -65,7 +65,7 @@ set<uint32_t> get_ancestry(uint32_t taxon);
 void report_stats(struct timeval time1, struct timeval time2);
 double get_seconds(struct timeval time1, struct timeval time2);
 
-unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts);
 uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
@@ -398,16 +398,20 @@ void process_file(char *filename) {
 
       unordered_map<uint32_t, uint32_t> bc_hit_counts;
       vector<unordered_map<uint32_t, uint32_t>> all_read_hit_counts;
+      vector<vector<uint32_t>> all_read_taxa;
       for (size_t i = 0; i < cur_bc.size(); i++) {
-        unordered_map<uint32_t, uint32_t> read_hit_counts = get_hit_count_map(
+        tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> read_hit_counts_tuple = get_hit_count_map(
           cur_bc[i],
           kraken_output_ss,
           classified_output_ss,
           unclassified_output_ss,
           my_taxon_counts
         );
-        all_read_hit_counts.push_back(read_hit_counts);
+        unordered_map<uint32_t, uint32_t> read_hit_counts = get<0>(read_hit_counts_tuple);
+        vector<uint32_t> read_taxa = get<1>(read_hit_counts);
 
+        all_read_hit_counts.push_back(read_hit_counts);
+        all_read_taxa.push_back(read_taxa);
         for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
           uint32_t taxon = it->first;
           bc_hit_counts[taxon]++;
@@ -430,6 +434,7 @@ void process_file(char *filename) {
           kraken_output_ss,
           classified_output_ss,
           unclassified_output_ss,
+          all_read_taxa[i],
           call
         );
       }
@@ -475,24 +480,6 @@ inline void print_sequence(ostringstream* oss_ptr, const DNASequence& dna) {
       }
 }
 
-/*
-inline
-void append_hitlist_string(string& hitlist_string, uint32_t& last_taxon, uint32_t& last_counter, uint32_t current_taxon) {
-  if (last_taxon == current_taxon) {
-    ++last_counter;
-  } else {
-    if (last_counter > 0) {
-      if (last_taxon == ambig_taxon) {
-        hitlist_string += "A:" + std::to_string(last_counter) + ' ';
-      } else {
-        hitlist_string += std::to_string(last_taxon) + ':' + std::to_string(last_counter) + ' ';
-      }
-    }
-    last_counter = 1;
-    last_taxon = current_taxon;
-  }
-}
-*/
 
 string hitlist_string(const vector<uint32_t> &taxa, const vector<uint8_t> &ambig)
 {
@@ -531,41 +518,8 @@ string hitlist_string(const vector<uint32_t> &taxa, const vector<uint8_t> &ambig
   return hitlist.str();
 }
 
-/*
-string hitlist_string_depr(const vector<uint32_t> &taxa)
-{
-  uint32_t last_code = taxa[0];
-  int code_count = 1;
-  ostringstream hitlist;
 
-  for (size_t i = 1; i < taxa.size(); i++) {
-    uint32_t code = taxa[i];
-
-    if (code == last_code) {
-      code_count++;
-    }
-    else {
-      if (last_code >= 0) {
-        hitlist << last_code << ":" << code_count << " ";
-      }
-      else {
-        hitlist << "A:" << code_count << " ";
-      }
-      code_count = 1;
-      last_code = code;
-    }
-  }
-  if (last_code == -1) {
-    hitlist << "A:" << code_count;
-  }
-  else {
-    hitlist << last_code << ":" << code_count;
-  }
-  return hitlist.str();
-}
-*/
-
-unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstream &koss,
+tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>> get_hit_count_map(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
 
@@ -590,7 +544,6 @@ unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstr
     while ((kmer_ptr = scanner.next_kmer()) != NULL) {
       taxon = 0;
       if (scanner.ambig_kmer()) {
-        //append_hitlist_string(hitlist_string, last_taxon, last_counter, ambig_taxon);
         ambig_list.push_back(1);
       }
       else {
@@ -607,20 +560,16 @@ unordered_map<uint32_t, uint32_t> get_hit_count_map(DNASequence &dna, ostringstr
           }
         }
 
-        // cerr << "taxon for " << *kmer_ptr << " is " << taxon << endl;
         my_taxon_counts[taxon].add_kmer(cannonical_kmer);
 
         if (taxon) {
           hit_counts[taxon]++;
-          if (Quick_mode && ++hits >= Minimum_hit_count)
-            break;
         }
       }
       taxa.push_back(taxon);
-      //append_hitlist_string(hitlist_string, last_taxon, last_counter, taxon);
     }
   }
-  return hit_counts;
+  return make_tuple(hit_counts, taxa);
 }
 
 uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
@@ -646,7 +595,8 @@ uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
 }
 
 bool handle_call(DNASequence &dna, ostringstream &koss,
-                       ostringstream &coss, ostringstream &uoss, uint32_t call) {
+                       ostringstream &coss, ostringstream &uoss,
+                       vector<uint32_t> taxa, uint32_t call) {
 
   if (Print_unclassified && !call) 
     print_sequence(&uoss, dna);
