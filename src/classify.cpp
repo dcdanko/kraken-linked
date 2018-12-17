@@ -377,7 +377,7 @@ void process_file(char *filename) {
       cur_bc.clear();
       size_t total_nt = 0;
 
-      cur_bc = reader.next_bc();
+      cur_bc = reader->next_bc();
       
       unordered_map<uint32_t, cur_bc.size()> my_taxon_counts;
       uint64_t my_total_classified = 0;
