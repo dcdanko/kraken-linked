@@ -22,7 +22,7 @@
 #include "kraken_headers.hpp"
 #include "krakenutil.hpp"
 #include <unordered_set>
-#include<algorithm>
+#include <algorithm>
 
 using namespace std;
 
