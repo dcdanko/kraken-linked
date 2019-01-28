@@ -107,7 +107,49 @@ namespace kraken {
     return 1;
   }
 
+  // Remove low abundance paths from the tree demoting their kmer
+  // counts to their parents.
+  unordered_map<uint32_t, uint32_t> prune_tree(
+    uint32_t min_abundance,
+    const unordered_map<uint32_t, uint32_t> &hit_counts,
+    const unordered_map<uint32_t, uint32_t> &parent_map) {
+    uint32_t taxon, parent, abund;
+    unordered_map<uint32_t, uint32_t> pruned_counts;
+    unordered_set<uint32_t> internal_nodes;
+    bool modified;
 
+    modified = true;
+    while(modified){
+      modified = false;
+
+      for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
+        taxon = it->first;
+        parent = parent_map.find(taxon);
+        internal_nodes.insert(parent);
+        pruned_counts[parent] = hit_counts[parent];
+      }
+
+      for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
+        taxon = it->first;
+        abund = it->second;
+        if(internal_nodes.count(taxon) == 0){
+          if(abund >= min_abundance){
+            pruned_counts[taxon] = abund
+          } else {
+            parent = parent_map.find(taxon);
+            pruned_counts[parent] += abund;
+            modified = true;
+          }
+        }
+      }
+      hit_counts = pruned_counts;
+      pruned_counts = unordered_map<uint32_t, uint32_t>();
+      internal_nodes.clear()
+    }
+
+    return hit_counts;
+
+  }
 
   // Tree resolution: take all hit taxa (plus ancestors), then
   // return leaf of highest weighted leaf-to-root path.
@@ -117,16 +159,37 @@ namespace kraken {
   
     set<uint32_t> max_taxa;
     uint32_t max_taxon = 0, max_score = 0;
+    unordered_map<uint32_t, uint32_t> pruned_read_hit_counts;
+    uint32_t, taxon, parent, abund;
+    for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
+      taxon = it->first;
+      if (bc_hit_counts.count(taxon) > 0) {
+        if(pruned_read_hit_counts.count(taxon) > 0){
+          pruned_read_hit_counts[taxon] += it->second;
+        } else {
+          pruned_read_hit_counts[taxon] = it->second;
+        }
+      } else {
+        parent = parent_map[taxon];
+        while (bc_hit_counts.count(parent) == 0){
+          parent = parent_map[parent];
+        }
+        if(pruned_read_hit_counts.count(parent) > 0){
+          pruned_read_hit_counts[parent] += it->second;
+        } else {
+          pruned_read_hit_counts[parent] = it->second;
+        }
+      }
+    }
 
     // Sum each taxon's LTR path
-    for (auto it = read_hit_counts.begin();
-         it != read_hit_counts.end(); ++it) {
+    for (auto it = pruned_read_hit_counts.begin(); it != pruned_read_hit_counts.end(); ++it) {
       uint32_t taxon = it->first;
       uint32_t node = taxon;
       uint32_t score = 0;
       while (node > 0) {
-        auto it2 = read_hit_counts.find(node);
-        if (it2 != read_hit_counts.end()) {
+        auto it2 = pruned_read_hit_counts.find(node);
+        if (it2 != pruned_read_hit_counts.end()) {
           score += it2->second;
         }
         auto node_it = parent_map.find(node);
@@ -156,7 +219,6 @@ namespace kraken {
 
     // If two LTR paths are tied for max, return LCA of all
     if (! max_taxa.empty()) {
-      // TODO USE BC AS TIEBREAKER
       set<uint32_t>::iterator sit = max_taxa.begin();
       max_taxon = *sit;
       for (sit++; sit != max_taxa.end(); sit++)

@@ -28,6 +28,7 @@
 #include "gzstream.h"
 #include "uid_mapping.hpp"
 #include "process_reads.cpp"
+#include "classify_io.cpp"
 #include <sstream>
 
 const size_t DEF_WORK_UNIT_SIZE = 500000;

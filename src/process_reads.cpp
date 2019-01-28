@@ -61,6 +61,10 @@ tuple<uint64_t, uint64_t, uint64_t> process_file(
         }
       }
 
+      unordered_map<uint32_t, uint32_t> pruned_hit_counts;
+      pruned_hit_counts = prune_tree(2, bc_hit_counts, Parent_map);
+
+
       // Read Assignment Step: Loop over reads in the barcode assigning each read to a taxa
       // 
       // Uses the maps/vectors stored from the kmer assignment step to
@@ -72,7 +76,7 @@ tuple<uint64_t, uint64_t, uint64_t> process_file(
           cur_bc[i],
           my_taxon_counts,
           all_read_hit_counts[i],
-          bc_hit_counts
+          pruned_hit_counts
         );
 
         my_total_classified += handle_call(
