@@ -211,16 +211,19 @@ namespace kraken {
     for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
       taxon = it->first;
       if (bc_hit_counts.count(taxon) > 0) { // in pruned-bc-tree
+	cerr << " - taxon in bc" << endl;
         if(pruned_read_hit_counts.count(taxon) > 0){ // this node may be an ancestor of a pruned node 
           pruned_read_hit_counts[taxon] += it->second;
         } else {
           pruned_read_hit_counts[taxon] = it->second;
         }
       } else { // not in pruned-bc-tree
+	cerr << " - taxon not in bc" << endl;
         parent = parent_map.at(taxon);
         while (bc_hit_counts.count(parent) == 0){ // find first ancestor in pruned-bc-tree
           parent = parent_map.at(parent);
         }
+	cerr << " - found parent" << endl;
         if(pruned_read_hit_counts.count(parent) > 0){
           pruned_read_hit_counts[parent] += it->second;
         } else {
@@ -228,17 +231,24 @@ namespace kraken {
         }
       }
     }
-
+    cerr << "finding ltr" << endl;
     // Sum each taxon's LTR path in the pruned-read-tree
+    cerr << " - start outer loop" << endl;
     for (auto it = pruned_read_hit_counts.begin(); it != pruned_read_hit_counts.end(); ++it) {
       uint32_t taxon = it->first;
       uint32_t node = taxon;
       uint32_t score = 0;
+      cerr << " - start inner loop with node " << node << endl;
       while (node > 0) {
+	cerr << " - - finding node " << node << endl;
         auto it2 = pruned_read_hit_counts.find(node);
+	cerr << " - - found node" << endl;
         if (it2 != pruned_read_hit_counts.end()) {
+	  cerr << " - - getting score" << endl;
           score += it2->second;
+	  cerr << " - - got score" << endl;
         }
+	cerr << " - - getting next node" << endl;
         auto node_it = parent_map.find(node);
         if (node_it == parent_map.end()) {
           cerr << "No parent for " << node << " recorded" << endl;
@@ -249,7 +259,7 @@ namespace kraken {
         } else {
           node = node_it->second;
         }
-
+	cerr << " - - end iteration of inner loop" << endl;
       }
 
       if (score > max_score) {
@@ -262,16 +272,21 @@ namespace kraken {
           max_taxa.insert(max_taxon);
         max_taxa.insert(taxon);
       }
+      cerr << " - end iteration of outer loop" << endl;
     }
 
     // If two LTR paths are tied for max, return LCA of all
-    if (! max_taxa.empty()) {
+    if (max_taxa.size() > 1) {
+      cerr << "find lca of " << max_taxa.size() << endl;
       set<uint32_t>::iterator sit = max_taxa.begin();
       max_taxon = *sit;
       for (sit++; sit != max_taxa.end(); sit++)
         max_taxon = lca(parent_map, max_taxon, *sit);
+    } else if(max_taxa.size() == 1){
+      set<uint32_t>::iterator sit = max_taxa.begin();
+      max_taxon = *sit;
     }
-
+    cerr << "finish resolving tree" << endl;
     return max_taxon;
   }
 
@@ -285,17 +300,24 @@ namespace kraken {
     uint32_t taxon, parent;
     unordered_map<uint32_t, vector<uint32_t>> bc_child_map;
     vector<uint32_t> child_vec;
+    cerr << "promoting call" << endl;
 
     for(auto it=bc_hit_counts.begin(); it!= bc_hit_counts.end(); ++it){
       taxon = it->first;
-      parent = parent_map.find(taxon)->second;
-      bc_child_map[parent].push_back(taxon);
+      auto parent_node = parent_map.find(taxon);
+      if(parent_node != parent_map.end()){
+	parent = parent_node->second;
+	bc_child_map[parent].push_back(taxon);
+      }
     }
-
+    cerr << "starting loop" << endl;
     while (true) {
+      cerr << " - promoting call " << call << endl;
       if(bc_child_map.count(call) == 0) // call already is a leaf
         return call;
+      cerr << " - getting children" << endl;
       child_vec  = bc_child_map[call];
+      cerr << " - promoted call " << child_vec.size() << endl;
       if(child_vec.size() >= 2) // ambiguous promotion
         return call;
       call = child_vec.front();
