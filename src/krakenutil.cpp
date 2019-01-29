@@ -126,9 +126,14 @@ namespace kraken {
 
       for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
         taxon = it->first;
-        parent = parent_map.find(taxon)->second;
-        internal_nodes.insert(parent);
-        pruned_counts[parent] = hit_counts.at(parent);
+	auto parent_node = parent_map.find(taxon);
+	while(parent_node != parent_map.end()){
+	  internal_nodes.insert(parent_node->second);
+	  if(hit_counts.count(parent_node->second) > 0){
+	    pruned_counts[parent_node->second] = hit_counts.at(parent_node->second);
+	  }
+	  parent_node = parent_map.find(parent_node->second);
+	}
       }
 
       for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
