@@ -405,16 +405,20 @@ void process_file(char *filename) {
       vector<vector<uint32_t>> all_read_taxa;
       vector<vector<uint8_t>> all_read_ambig;
 
-      // Kmer Assignment Step: Loop over reads in the barcode keeping the following for each read
-      // 
-      // - map from taxa_id -> the number of kmers mapping to that taxa
-      // - a vector of taxa for each read (0 == ambig)
-      // - a vector with only 0/1 indicating if a kmer is (1 == ambiguous)
-      // Also, count the number of kmers per taxa for all reads in the BC
+      /*
+       * Kmer Assignment Step: Loop over reads in the barcode keeping the following for each read
+       * 
+       * - map from taxa_id -> the number of kmers mapping to that taxa
+       * - a vector of taxa for each read (0 == ambig)
+       * - a vector with only 0/1 indicating if a kmer is (1 == ambiguous)
+       * Also, count the number of kmers per taxa for all reads in the BC
+       */
       for (size_t i = 0; i < cur_bc.size(); i++) {
         tuple<
-	  unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>
-	> read_hit_counts_tuple = get_hit_count_map(cur_bc[i], my_taxon_counts);
+	        unordered_map<uint32_t, uint32_t>,
+          vector<uint32_t>,
+          vector<uint8_t>
+	      > read_hit_counts_tuple = get_hit_count_map(cur_bc[i], my_taxon_counts);
         all_read_taxa.push_back(get<1>(read_hit_counts_tuple));
         all_read_ambig.push_back(get<2>(read_hit_counts_tuple));
 
@@ -429,15 +433,18 @@ void process_file(char *filename) {
       unordered_map<uint32_t, uint32_t> pruned_hit_counts;
       pruned_hit_counts = prune_tree(2, bc_hit_counts, Parent_map);
 
-
-      // Read Assignment Step: Loop over reads in the barcode assigning each read to a taxa
-      // 
-      // Uses the maps/vectors stored from the kmer assignment step to
-      // assign each read to a taxa. Use info from the whole BC to:
-      // 1) improve the taxonomic rank of calls
-      // 2) trim low abundance paths from the taxa tree
+      /*
+       * Read Assignment Step: Loop over reads in the barcode assigning each read to a taxa
+       * 
+       * Uses the maps/vectors stored from the kmer assignment step to
+       * assign each read to a taxa. Use info from the whole BC to:
+       * 1) improve the taxonomic rank of calls
+       * 2) trim low abundance paths from the taxa tree
+       */
       for (size_t i = 0; i < cur_bc.size(); i++) {
-        uint32_t call = classify_hit_count_map(cur_bc[i], my_taxon_counts, all_read_hit_counts[i], pruned_hit_counts);
+        uint32_t call = classify_hit_count_map(
+          cur_bc[i], my_taxon_counts, all_read_hit_counts[i], pruned_hit_counts
+        );
 
         my_total_classified += handle_call(
           cur_bc[i],
@@ -533,16 +540,15 @@ string hitlist_string(const vector<uint32_t> &taxa, const vector<uint8_t> &ambig
   return hitlist.str();
 }
 
-
-
+/*
+ * Take a single sequence and return a triple
+ * - map from taxa_id -> the number of kmers mapping to that taxa
+ * - a vector of taxa for each read (0 == ambig)
+ * - a vector with only 0/1 indicating if a kmer is (1 == ambiguous)
+ * As a side effect keep a list of all
+ */
 tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>>
 get_hit_count_map(DNASequence &dna, unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
-  // Take a single sequence and return a triple
-  // - map from taxa_id -> the number of kmers mapping to that taxa
-  // - a vector of taxa for each read (0 == ambig)
-  // - a vector with only 0/1 indicating if a kmer is (1 == ambiguous)
-  // As a side effect keep a list of all 
-
   vector<uint32_t> taxa;
   vector<uint8_t> ambig_list;
   unordered_map<uint32_t, uint32_t> hit_counts;
@@ -590,14 +596,17 @@ get_hit_count_map(DNASequence &dna, unordered_map<uint32_t, READCOUNTS>& my_taxo
   return make_tuple(hit_counts, taxa, ambig_list);
 }
 
-
+/*
+ * Find the call for the read.
+ * Prune read hits based on the barcode and promote the final call.
+ */
 uint32_t classify_hit_count_map(DNASequence &dna, 
-                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
-                       unordered_map<uint32_t, uint32_t> read_hit_counts,
-                       unordered_map<uint32_t, uint32_t> bc_hit_counts) {
+                                unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
+                                unordered_map<uint32_t, uint32_t> read_hit_counts,
+                                unordered_map<uint32_t, uint32_t> bc_hit_counts) {
   uint32_t call = 0;
   call = resolve_tree(read_hit_counts, Parent_map, bc_hit_counts);
-  // TODO USE BC COUNTS TO PROMOTE CALL
+  call = promote_call(call, Parent_map, bc_hit_counts);
   my_taxon_counts[call].incrementReadCount();
   return call;
 }
