@@ -114,17 +114,18 @@ namespace kraken {
     uint32_t min_abundance,
     const unordered_map<uint32_t, uint32_t> &inp_hit_counts,
     const unordered_map<uint32_t, uint32_t> &parent_map) {
+    cerr << "pruning tree" << endl;
     uint32_t taxon, parent, abund;
     unordered_map<uint32_t, uint32_t> pruned_counts;
     unordered_map<uint32_t, uint32_t> hit_counts = inp_hit_counts;
     unordered_set<uint32_t> internal_nodes;
     bool modified;
-
+    
     // Run loop until the pruned tree is the same as the unpruned tree
     modified = true;
     while(modified){
       modified = false;
-
+      cerr << "finding internal nodes..." << endl;
       /*
        * Find the ancestors of all nodes in the unpruned tree and
        * keep track of them as internal (not leaf) nodes.
@@ -156,20 +157,28 @@ namespace kraken {
         taxon = it->first;
         abund = it->second;
         if(internal_nodes.count(taxon) == 0){
-          if(abund >= min_abundance){
+	  cerr << "looping through leaf node" << endl;
+	  auto parent_node = parent_map.find(taxon);
+          if(abund >= min_abundance || parent_node == parent_map.end()){
+	    cerr << " - leaf node is abundant enough" << endl;
             pruned_counts[taxon] = abund;
           } else {
-            parent = parent_map.find(taxon)->second;
-            if(pruned_counts.count(parent) > 0){
-              pruned_counts[parent] += abund;
-            } else {
-              pruned_counts[parent] = abund;
-            }
-            modified = true;
+	    cerr << " - leaf node is not abundant" << endl;	   
+	    parent = parent_node->second;
+	    cerr << " - got parent name" << endl;	   
+	    if(pruned_counts.count(parent) > 0){
+	      cerr << " - - parent in pruned" << endl;
+	      pruned_counts[parent] += abund;
+	    } else {
+	      cerr << " - - parent not in pruned" << endl;
+	      pruned_counts[parent] = abund;
+	    }
+	    modified = true;
           }
         }
       }
 
+      cerr << "preparing next loop" << endl;
       // Prepare for the next iteration of the loop
       hit_counts = pruned_counts;
       pruned_counts = unordered_map<uint32_t, uint32_t>();
@@ -189,7 +198,7 @@ namespace kraken {
     uint32_t max_taxon = 0, max_score = 0;
     unordered_map<uint32_t, uint32_t> pruned_read_hit_counts;
     uint32_t taxon, parent;
-
+    cerr << "resolving tree" << endl;
     /*
      * Iterate through (taxon, kmer) hits in the read.
      * 
