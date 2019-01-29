@@ -111,10 +111,11 @@ namespace kraken {
   // counts to their parents.
   unordered_map<uint32_t, uint32_t> prune_tree(
     uint32_t min_abundance,
-    const unordered_map<uint32_t, uint32_t> &hit_counts,
+    const unordered_map<uint32_t, uint32_t> &inp_hit_counts,
     const unordered_map<uint32_t, uint32_t> &parent_map) {
     uint32_t taxon, parent, abund;
     unordered_map<uint32_t, uint32_t> pruned_counts;
+    unordered_map<uint32_t, uint32_t> hit_counts = inp_hit_counts;
     unordered_set<uint32_t> internal_nodes;
     bool modified;
 
@@ -124,9 +125,9 @@ namespace kraken {
 
       for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
         taxon = it->first;
-        parent = parent_map.find(taxon);
+        parent = parent_map.find(taxon)->second;
         internal_nodes.insert(parent);
-        pruned_counts[parent] = hit_counts[parent];
+        pruned_counts[parent] = hit_counts.at(parent);
       }
 
       for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
@@ -134,9 +135,9 @@ namespace kraken {
         abund = it->second;
         if(internal_nodes.count(taxon) == 0){
           if(abund >= min_abundance){
-            pruned_counts[taxon] = abund
+            pruned_counts[taxon] = abund;
           } else {
-            parent = parent_map.find(taxon);
+            parent = parent_map.find(taxon)->second;
             pruned_counts[parent] += abund;
             modified = true;
           }
@@ -144,7 +145,7 @@ namespace kraken {
       }
       hit_counts = pruned_counts;
       pruned_counts = unordered_map<uint32_t, uint32_t>();
-      internal_nodes.clear()
+      internal_nodes.clear();
     }
 
     return hit_counts;
@@ -160,7 +161,7 @@ namespace kraken {
     set<uint32_t> max_taxa;
     uint32_t max_taxon = 0, max_score = 0;
     unordered_map<uint32_t, uint32_t> pruned_read_hit_counts;
-    uint32_t, taxon, parent, abund;
+    uint32_t taxon, parent;
     for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
       taxon = it->first;
       if (bc_hit_counts.count(taxon) > 0) {
@@ -170,9 +171,9 @@ namespace kraken {
           pruned_read_hit_counts[taxon] = it->second;
         }
       } else {
-        parent = parent_map[taxon];
+        parent = parent_map.at(taxon);
         while (bc_hit_counts.count(parent) == 0){
-          parent = parent_map[parent];
+          parent = parent_map.at(parent);
         }
         if(pruned_read_hit_counts.count(parent) > 0){
           pruned_read_hit_counts[parent] += it->second;

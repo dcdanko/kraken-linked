@@ -33,6 +33,11 @@ namespace kraken {
   // Default ancestor is 1 (root of tree)
 uint32_t lca(const std::unordered_map<uint32_t, uint32_t> &parent_map, uint32_t a, uint32_t b);
 
+  // Remove low abundance paths from a tree
+  std::unordered_map<uint32_t, uint32_t> prune_tree(
+    uint32_t min_abundance,
+    const std::unordered_map<uint32_t, uint32_t> &inp_hit_counts,
+    const std::unordered_map<uint32_t, uint32_t> &parent_map);
 
 
   // Resolve classification tree

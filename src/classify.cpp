@@ -27,8 +27,6 @@
 #include "taxdb.hpp"
 #include "gzstream.h"
 #include "uid_mapping.hpp"
-#include "process_reads.cpp"
-#include "classify_io.cpp"
 #include <sstream>
 
 const size_t DEF_WORK_UNIT_SIZE = 500000;
@@ -65,14 +63,10 @@ void report_stats(struct timeval time1, struct timeval time2);
 double get_seconds(struct timeval time1, struct timeval time2);
 
 tuple<
-  unordered_map<uint32_t, uint32_t>,
-  vector<uint32_t>,
-  vector<uint8_t>
-> get_hit_count_map(DNASequence &dna, ostringstream &koss,
-                       ostringstream &coss, ostringstream &uoss,
-                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts);
-uint32_t classify_hit_count_map(DNASequence &dna, ostringstream &koss,
-                       ostringstream &coss, ostringstream &uoss,
+  unordered_map<uint32_t, uint32_t>,vector<uint32_t>, vector<uint8_t>
+> get_hit_count_map(DNASequence &dna,
+		    unordered_map<uint32_t, READCOUNTS>& my_taxon_counts);
+uint32_t classify_hit_count_map(DNASequence &dna,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
                        unordered_map<uint32_t, uint32_t> read_hit_counts,
                        unordered_map<uint32_t, uint32_t> bc_hit_counts);
@@ -105,9 +99,10 @@ uint32_t Minimum_hit_count = 1;
 unordered_map<uint32_t, uint32_t> Parent_map;
 unordered_map<uint32_t, vector<uint32_t> > Uid_dict;
 string Classified_output_file, Unclassified_output_file, Kraken_output_file, Report_output_file, TaxDB_file;
+
+ostream *Kraken_output;
 ostream *Classified_output;
 ostream *Unclassified_output;
-ostream *Kraken_output;
 ostream *Report_output;
 vector<ofstream*> Open_fstreams;
 vector<ogzstream*> Open_gzstreams;
@@ -378,6 +373,112 @@ void report_stats(struct timeval time1, struct timeval time2) {
           (total_sequences - total_classified) * 100.0 / total_sequences);
 }
 
+void process_file(char *filename) {
+
+  uint64_t total_classified = 0;
+  uint64_t total_sequences = 0;
+  uint64_t total_bases = 0;
+  string file_str(filename);
+  BCReader *reader;
+  reader = new BCReader(file_str);
+
+  #pragma omp parallel
+  {
+    vector<DNASequence> cur_bc;
+    ostringstream kraken_output_ss, classified_output_ss, unclassified_output_ss;
+
+    while (reader->is_valid()) { // Loop over barcodes
+      cur_bc.clear();
+      size_t total_nt = 0;
+
+      cur_bc = reader->next_bc();
+      
+      unordered_map<uint32_t, READCOUNTS> my_taxon_counts;
+      uint64_t my_total_classified = 0;
+      kraken_output_ss.str("");
+      classified_output_ss.str("");
+      unclassified_output_ss.str("");
+
+      unordered_map<uint32_t, uint32_t> bc_hit_counts;
+      vector<unordered_map<uint32_t, uint32_t>> all_read_hit_counts;
+      vector<vector<uint32_t>> all_read_taxa;
+      vector<vector<uint8_t>> all_read_ambig;
+
+      // Kmer Assignment Step: Loop over reads in the barcode keeping the following for each read
+      // 
+      // - map from taxa_id -> the number of kmers mapping to that taxa
+      // - a vector of taxa for each read (0 == ambig)
+      // - a vector with only 0/1 indicating if a kmer is (1 == ambiguous)
+      // Also, count the number of kmers per taxa for all reads in the BC
+      for (size_t i = 0; i < cur_bc.size(); i++) {
+        tuple<
+	  unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>
+	> read_hit_counts_tuple = get_hit_count_map(cur_bc[i], my_taxon_counts);
+        all_read_taxa.push_back(get<1>(read_hit_counts_tuple));
+        all_read_ambig.push_back(get<2>(read_hit_counts_tuple));
+
+        unordered_map<uint32_t, uint32_t> read_hit_counts = get<0>(read_hit_counts_tuple);
+        all_read_hit_counts.push_back(read_hit_counts);
+        for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
+          uint32_t taxon = it->first;
+          bc_hit_counts[taxon]++;
+        }
+      }
+
+      unordered_map<uint32_t, uint32_t> pruned_hit_counts;
+      pruned_hit_counts = prune_tree(2, bc_hit_counts, Parent_map);
+
+
+      // Read Assignment Step: Loop over reads in the barcode assigning each read to a taxa
+      // 
+      // Uses the maps/vectors stored from the kmer assignment step to
+      // assign each read to a taxa. Use info from the whole BC to:
+      // 1) improve the taxonomic rank of calls
+      // 2) trim low abundance paths from the taxa tree
+      for (size_t i = 0; i < cur_bc.size(); i++) {
+        uint32_t call = classify_hit_count_map(cur_bc[i], my_taxon_counts, all_read_hit_counts[i], pruned_hit_counts);
+
+        my_total_classified += handle_call(
+          cur_bc[i],
+          kraken_output_ss,
+          classified_output_ss,
+          unclassified_output_ss,
+          all_read_taxa[i],
+          all_read_ambig[i],
+          call
+        );
+      }
+
+      // Write output
+      #pragma omp critical(write_output)
+      {
+        total_classified += my_total_classified;
+        for (auto it = my_taxon_counts.begin(); it != my_taxon_counts.end(); ++it) {
+          taxon_counts[it->first] += std::move(it->second);
+        }
+
+        if (Print_kraken)
+          (*Kraken_output) << kraken_output_ss.str();
+        if (Print_classified)
+          (*Classified_output) << classified_output_ss.str();
+        if (Print_unclassified)
+          (*Unclassified_output) << unclassified_output_ss.str();
+        
+        total_sequences += cur_bc.size();
+        total_bases += total_nt;
+        if (Print_Progress) {  
+          fprintf(stderr, 
+            "\r Processed %lu sequences (%.2f%% classified)",
+            total_sequences, total_classified * 100.0 / total_sequences
+          );
+        }
+      }
+    }
+  }  // end parallel section
+
+  delete reader;
+}
+
 
 
 inline void print_sequence(ostringstream* oss_ptr, const DNASequence& dna) {
@@ -568,4 +669,109 @@ void usage(int exit_code) {
        << "At least one FASTA or FASTQ file must be specified." << endl
        << "Kraken output is to standard output by default." << endl;
   exit(exit_code);
+}
+
+
+tuple<unordered_map<uint32_t, uint32_t>, vector<uint32_t>, vector<uint8_t>>
+get_hit_count_map(DNASequence &dna, unordered_map<uint32_t, READCOUNTS>& my_taxon_counts) {
+  // Take a single sequence and return a triple
+  // - map from taxa_id -> the number of kmers mapping to that taxa
+  // - a vector of taxa for each read (0 == ambig)
+  // - a vector with only 0/1 indicating if a kmer is (1 == ambiguous)
+  // As a side effect keep a list of all 
+
+  vector<uint32_t> taxa;
+  vector<uint8_t> ambig_list;
+  unordered_map<uint32_t, uint32_t> hit_counts;
+  uint64_t *kmer_ptr;
+  uint32_t taxon = 0;
+
+  vector<db_status> db_statuses(KrakenDatabases.size());
+
+  if (dna.seq.size() >= KrakenDatabases[0]->get_k()) {  // check that the seq is longer than K
+    size_t n_kmers = 1 + dna.seq.size() - KrakenDatabases[0]->get_k();
+    taxa.reserve(n_kmers);
+    ambig_list.reserve(n_kmers);
+    KmerScanner scanner(dna.seq);
+
+    while ((kmer_ptr = scanner.next_kmer()) != NULL) { // Iterate over kmers
+      taxon = 0;
+      if (scanner.ambig_kmer()) {
+        ambig_list.push_back(1);
+      } else {
+        uint64_t cannonical_kmer = KrakenDatabases[0]->canonical_representation(*kmer_ptr);
+        ambig_list.push_back(0);
+        // go through multiple databases to map k-mer
+        for (size_t i=0; i<KrakenDatabases.size(); ++i) {
+          uint32_t* val_ptr = KrakenDatabases[i]->kmer_query(
+            cannonical_kmer,
+            &db_statuses[i].current_bin_key,
+            &db_statuses[i].current_min_pos,
+            &db_statuses[i].current_max_pos
+          );
+          if (val_ptr) {
+            taxon = *val_ptr;
+            break;
+          }
+        }
+
+        my_taxon_counts[taxon].add_kmer(cannonical_kmer);
+
+        if (taxon) {
+          hit_counts[taxon]++;
+        }
+      }
+      taxa.push_back(taxon);
+    }
+  }
+  return make_tuple(hit_counts, taxa, ambig_list);
+}
+
+
+uint32_t classify_hit_count_map(DNASequence &dna, 
+                       unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
+                       unordered_map<uint32_t, uint32_t> read_hit_counts,
+                       unordered_map<uint32_t, uint32_t> bc_hit_counts) {
+  uint32_t call = 0;
+  call = resolve_tree(read_hit_counts, Parent_map, bc_hit_counts);
+  // TODO USE BC COUNTS TO PROMOTE CALL
+  my_taxon_counts[call].incrementReadCount();
+  return call;
+}
+
+
+bool handle_call(DNASequence &dna, ostringstream &koss,
+                       ostringstream &coss, ostringstream &uoss,
+                       vector<uint32_t> taxa, vector<uint8_t> ambig_list, uint32_t call) {
+
+  if (Print_unclassified && !call) 
+    print_sequence(&uoss, dna);
+
+  if (Print_classified && call)
+    print_sequence(&coss, dna);
+
+
+  if (! Print_kraken)
+    return call;
+
+  if (call) {
+    koss << "C\t";
+  }
+  else {
+    if (Only_classified_kraken_output)
+      return false;
+    koss << "U\t";
+  }
+  koss << dna.id << '\t' << call << '\t' << dna.seq.size() << '\t';
+
+  if (taxa.empty())
+    koss << "0:0";
+  else
+    koss << hitlist_string(taxa, ambig_list);
+
+  if (Print_sequence)
+      koss << "\t" << dna.seq;
+
+  koss << "\n";
+  return call;
 }
