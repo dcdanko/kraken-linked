@@ -286,10 +286,10 @@ namespace kraken {
     while (true) {
       if(bc_child_map.count(call) == 0) // call already is a leaf
         return call;
-      child_vec  = bc_child_map[call]
+      child_vec  = bc_child_map[call];
       if(child_vec.size() >= 2) // ambiguous promotion
         return call;
-      call = child_vec.front()
+      call = child_vec.front();
     }
   }
 
