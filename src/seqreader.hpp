@@ -1,5 +1,6 @@
 /*
  * Copyright 2013-2015, Derrick Wood <dwood@cs.jhu.edu>
+ * Portions (c) 2019-2020, David Danko <dcd3001@med.cornell.edu> as part of KrakenLinked
  *
  * This file is part of the Kraken taxonomic sequence classification system.
  *
@@ -28,7 +29,9 @@ namespace kraken {
     std::string header_line;  // id + optional description
     std::string seq;
     std::string quals;
+    std::string bc;
   } DNASequence;
+
 
   class DNASequenceReader {
     public:
@@ -58,6 +61,28 @@ namespace kraken {
     private:
     std::ifstream file;
     bool valid;
+  };
+
+  class BCFastqReader : public DNASequenceReader {
+    public:
+    BCFastqReader(std::string filename);
+    DNASequence next_sequence();
+    bool is_valid();
+
+    private:
+    std::ifstream file;
+    bool valid;
+  };
+
+  class BCReader {
+    public:
+    BCReader(std::string filename);
+    std::vector<DNASequence> next_bc();
+    bool is_valid();
+
+    private:
+    BCFastqReader bc_fastq_reader;
+    DNASequence cur_seq;
   };
 }
 

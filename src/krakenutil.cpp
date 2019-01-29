@@ -1,6 +1,7 @@
 /*
  * Original file Copyright 2013-2015, Derrick Wood <dwood@cs.jhu.edu>
  * Portions (c) 2017-2018, Florian Breitwieser <fbreitwieser@jhu.edu> as part of KrakenUniq
+ * Portions (c) 2019-2020, David Danko <dcd3001@med.cornell.edu> as part of KrakenLinked
  *
  * This file is part of the Kraken taxonomic sequence classification system.
  *
@@ -22,7 +23,7 @@
 #include "kraken_headers.hpp"
 #include "krakenutil.hpp"
 #include <unordered_set>
-#include<algorithm>
+#include <algorithm>
 
 using namespace std;
 
@@ -107,38 +108,137 @@ namespace kraken {
     return 1;
   }
 
+  // Remove low abundance paths from the tree demoting their kmer
+  // counts to their parents.
+  unordered_map<uint32_t, uint32_t> prune_tree(
+    uint32_t min_abundance,
+    const unordered_map<uint32_t, uint32_t> &inp_hit_counts,
+    const unordered_map<uint32_t, uint32_t> &parent_map) {
+    uint32_t taxon, parent, abund;
+    unordered_map<uint32_t, uint32_t> pruned_counts;
+    unordered_map<uint32_t, uint32_t> hit_counts = inp_hit_counts;
+    unordered_set<uint32_t> internal_nodes;
+    bool modified;
+    
+    // Run loop until the pruned tree is the same as the unpruned tree
+    modified = true;
+    while(modified){
+      modified = false;
 
+      /*
+       * Find the ancestors of all nodes in the unpruned tree and
+       * keep track of them as internal (not leaf) nodes.
+       *
+       * Also add the hits from non-leaf nodes to the pruned tree
+       * since we only remove leaf nodes each iteration. Note that
+       * not all internal nodes have hits.
+       */
+      for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
+        taxon = it->first;
+      	auto parent_node = parent_map.find(taxon);
+      	while(parent_node != parent_map.end()){
+      	  internal_nodes.insert(parent_node->second);
+      	  if(hit_counts.count(parent_node->second) > 0){
+      	    pruned_counts[parent_node->second] = hit_counts.at(parent_node->second);
+      	  }
+      	  parent_node = parent_map.find(parent_node->second);
+      	}
+      }
+
+      /*
+       * Loop through leaf nodes in the unpruned tree. If they are
+       * above threshold add the leaf node to the pruned tree. If
+       * they are below threshold add the leaf node's abundance to
+       * the parent (assume a count of zero if the parent is not
+       * already present).
+       */
+      for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
+        taxon = it->first;
+        abund = it->second;
+        if(internal_nodes.count(taxon) == 0){
+	  auto parent_node = parent_map.find(taxon);
+          if(abund >= min_abundance || parent_node == parent_map.end()){
+            pruned_counts[taxon] = abund;
+          } else {
+	    parent = parent_node->second;
+	    if(pruned_counts.count(parent) > 0){
+	      pruned_counts[parent] += abund;
+	    } else {
+	      pruned_counts[parent] = abund;
+	    }
+	    modified = true;
+          }
+        }
+      }
+
+      // Prepare for the next iteration of the loop
+      hit_counts = pruned_counts;
+      pruned_counts = unordered_map<uint32_t, uint32_t>();
+      internal_nodes.clear();
+    }
+
+    return hit_counts;
+  }
 
   // Tree resolution: take all hit taxa (plus ancestors), then
   // return leaf of highest weighted leaf-to-root path.
-  uint32_t resolve_tree(const unordered_map<uint32_t, uint32_t> &hit_counts,
-                        const unordered_map<uint32_t, uint32_t> &parent_map) {
+  uint32_t resolve_tree(const unordered_map<uint32_t, uint32_t> &read_hit_counts,
+                        const unordered_map<uint32_t, uint32_t> &parent_map,
+                        const unordered_map<uint32_t, uint32_t> &bc_hit_counts) {
   
     set<uint32_t> max_taxa;
     uint32_t max_taxon = 0, max_score = 0;
+    unordered_map<uint32_t, uint32_t> pruned_read_hit_counts;
+    uint32_t taxon, parent;
 
-    // Sum each taxon's LTR path
-    for (auto it = hit_counts.begin();
-         it != hit_counts.end(); ++it) {
+    /*
+     * Iterate through (taxon, kmer) hits in the read.
+     * 
+     * If taxon is in the pruned-barcode-tree add the(taxon, kmer)
+     * to pruned-read-tree.
+     * If taxon is not in the pruned-barcode-tree find the first
+     * ancestor that is and add (ancestor, read-kmer + ancestor-kmer || 0)
+     * to the pruned-read-tree.
+     */
+    for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
+      taxon = it->first;
+      if (bc_hit_counts.count(taxon) > 0) { // in pruned-bc-tree
+        if(pruned_read_hit_counts.count(taxon) > 0){ // this node may be an ancestor of a pruned node 
+          pruned_read_hit_counts[taxon] += it->second;
+        } else {
+          pruned_read_hit_counts[taxon] = it->second;
+        }
+      } else { // not in pruned-bc-tree
+        parent = parent_map.at(taxon);
+        while (bc_hit_counts.count(parent) == 0){ // find first ancestor in pruned-bc-tree
+          parent = parent_map.at(parent);
+        }
+        if(pruned_read_hit_counts.count(parent) > 0){
+          pruned_read_hit_counts[parent] += it->second;
+        } else {
+          pruned_read_hit_counts[parent] = it->second;
+        }
+      }
+    }
+
+    // Sum each taxon's LTR path in the pruned-read-tree
+    for (auto it = pruned_read_hit_counts.begin(); it != pruned_read_hit_counts.end(); ++it) {
       uint32_t taxon = it->first;
       uint32_t node = taxon;
       uint32_t score = 0;
       while (node > 0) {
-        auto it2 = hit_counts.find(node);
-        if (it2 != hit_counts.end()) {
+        auto it2 = pruned_read_hit_counts.find(node);
+        if (it2 != pruned_read_hit_counts.end()) {
           score += it2->second;
         }
         auto node_it = parent_map.find(node);
         if (node_it == parent_map.end()) {
-          cerr << "No parent for " << node << " recorded" << endl;
           break;
         } else if (node_it->second == node) {
-          cerr << "Taxon " << node << " has itself as parent!" << endl;
           break;
         } else {
           node = node_it->second;
         }
-
       }
 
       if (score > max_score) {
@@ -154,17 +254,46 @@ namespace kraken {
     }
 
     // If two LTR paths are tied for max, return LCA of all
-    if (! max_taxa.empty()) {
+    if (max_taxa.size() > 1) {
       set<uint32_t>::iterator sit = max_taxa.begin();
       max_taxon = *sit;
       for (sit++; sit != max_taxa.end(); sit++)
         max_taxon = lca(parent_map, max_taxon, *sit);
+    } else if(max_taxa.size() == 1){
+      set<uint32_t>::iterator sit = max_taxa.begin();
+      max_taxon = *sit;
     }
-
     return max_taxon;
   }
 
 
+  /*
+   * Return the best unambigous promotion present in the barcode.
+   */
+  uint32_t promote_call(uint32_t call,
+                        const unordered_map<uint32_t, uint32_t> &parent_map,
+                        const unordered_map<uint32_t, uint32_t> &bc_hit_counts){
+    uint32_t taxon, parent;
+    unordered_map<uint32_t, vector<uint32_t>> bc_child_map;
+    vector<uint32_t> child_vec;
+
+    for(auto it=bc_hit_counts.begin(); it!= bc_hit_counts.end(); ++it){
+      taxon = it->first;
+      auto parent_node = parent_map.find(taxon);
+      if(parent_node != parent_map.end()){
+	parent = parent_node->second;
+	bc_child_map[parent].push_back(taxon);
+      }
+    }
+    while (true) {
+      if(bc_child_map.count(call) == 0) // call already is a leaf
+        return call;
+      child_vec  = bc_child_map[call];
+      if(child_vec.size() >= 2) // ambiguous promotion
+        return call;
+      call = child_vec.front();
+    }
+  }
 
 
   uint8_t KmerScanner::k = 0;

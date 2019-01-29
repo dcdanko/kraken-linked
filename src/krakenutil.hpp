@@ -1,6 +1,7 @@
 /*
  * Original file Copyright 2013-2015, Derrick Wood <dwood@cs.jhu.edu>
  * Portions (c) 2017-2018, Florian Breitwieser <fbreitwieser@jhu.edu> as part of KrakenUniq
+ * Portions (c) 2019-2020, David Danko <dcd3001@med.cornell.edu> as part of KrakenLinked
  *
  * This file is part of the Kraken taxonomic sequence classification system.
  *
@@ -24,6 +25,8 @@
 #include "kraken_headers.hpp"
 #include <unordered_map>
 
+using namespace std;
+
 namespace kraken {
   // Build a map of node to parent from an NCBI taxonomy nodes.dmp file
   std::unordered_map<uint32_t, uint32_t> build_parent_map(std::string filename);
@@ -33,11 +36,20 @@ namespace kraken {
   // Default ancestor is 1 (root of tree)
 uint32_t lca(const std::unordered_map<uint32_t, uint32_t> &parent_map, uint32_t a, uint32_t b);
 
-
+  // Remove low abundance paths from a tree
+  unordered_map<uint32_t, uint32_t> prune_tree(uint32_t min_abundance,
+                                               const unordered_map<uint32_t, uint32_t> &inp_hit_counts,
+                                               const unordered_map<uint32_t, uint32_t> &parent_map);
 
   // Resolve classification tree
-  uint32_t resolve_tree(const std::unordered_map<uint32_t, uint32_t> &hit_counts,
-                        const std::unordered_map<uint32_t, uint32_t> &parent_map);
+  uint32_t resolve_tree(const std::unordered_map<uint32_t, uint32_t> &read_hit_counts,
+                        const std::unordered_map<uint32_t, uint32_t> &parent_map,
+                        const std::unordered_map<uint32_t, uint32_t> &bc_hit_counts);
+
+  // Promote non-specific taxonomy calls
+  uint32_t promote_call(uint32_t call,
+                        const std::unordered_map<uint32_t, uint32_t> &parent_map,
+                        const std::unordered_map<uint32_t, uint32_t> &bc_hit_counts);
 
   class KmerScanner {
     public:
