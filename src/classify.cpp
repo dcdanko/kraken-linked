@@ -77,6 +77,7 @@ bool handle_call(DNASequence &dna, ostringstream &koss,
 unordered_map<uint32_t, READCOUNTS> taxon_counts; // stats per taxon
 
 int Num_threads = 1;
+int Min_kmer_prune = 10;
 vector<string> DB_filenames;
 vector<string> Index_filenames;
 bool Quick_mode = false;
@@ -431,7 +432,7 @@ void process_file(char *filename) {
       }
 
       unordered_map<uint32_t, uint32_t> pruned_hit_counts;
-      pruned_hit_counts = prune_tree(2, bc_hit_counts, Parent_map);
+      pruned_hit_counts = prune_tree(Min_kmer_prune, bc_hit_counts, Parent_map);
 
       /*
        * Read Assignment Step: Loop over reads in the barcode assigning each read to a taxa
@@ -735,6 +736,9 @@ void parse_command_line(int argc, char **argv) {
         UID_to_TaxID_map_filename = optarg;
         Map_UIDs = true;
         break;
+      case 'P' :
+        Min_kmer_prune = stoi(optarg);
+        break;
       default:
         usage();
         break;
@@ -775,6 +779,7 @@ void usage(int exit_code) {
        << "  -c               Only include classified reads in output" << endl
        << "  -M               Preload database files" << endl
        << "  -s               Print read sequence in Kraken output" << endl
+       << "  -P               Min kmer abundance to avoid pruning a node" << endl
        << "  -h               Print this message" << endl
        << endl
        << "At least one FASTA or FASTQ file must be specified." << endl
