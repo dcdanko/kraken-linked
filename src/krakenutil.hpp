@@ -1,6 +1,7 @@
 /*
  * Original file Copyright 2013-2015, Derrick Wood <dwood@cs.jhu.edu>
  * Portions (c) 2017-2018, Florian Breitwieser <fbreitwieser@jhu.edu> as part of KrakenUniq
+ * Portions (c) 2019-2020, David Danko <dcd3001@med.cornell.edu> as part of KrakenLinked
  *
  * This file is part of the Kraken taxonomic sequence classification system.
  *
