@@ -295,6 +295,7 @@ namespace kraken {
       call = child_vec.front();
       hops_taken++;
     }
+    return call;
   }
 
 
