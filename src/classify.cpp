@@ -376,10 +376,6 @@ void report_stats(struct timeval time1, struct timeval time2) {
 }
 
 void process_file(char *filename) {
-
-  uint64_t total_classified = 0;
-  uint64_t total_sequences = 0;
-  uint64_t total_bases = 0;
   string file_str(filename);
   BCReader *reader;
   reader = new BCReader(file_str);
