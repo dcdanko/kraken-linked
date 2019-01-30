@@ -270,10 +270,10 @@ namespace kraken {
   /*
    * Return the best unambigous promotion present in the barcode.
    */
-  uint32_t promote_call(uint32_t call,
+  uint32_t promote_call(uint32_t call, uint32_t max_hops,
                         const unordered_map<uint32_t, uint32_t> &parent_map,
                         const unordered_map<uint32_t, uint32_t> &bc_hit_counts){
-    uint32_t taxon, parent;
+    uint32_t taxon, parent, hops_taken;
     unordered_map<uint32_t, vector<uint32_t>> bc_child_map;
     vector<uint32_t> child_vec;
 
@@ -281,17 +281,19 @@ namespace kraken {
       taxon = it->first;
       auto parent_node = parent_map.find(taxon);
       if(parent_node != parent_map.end()){
-	parent = parent_node->second;
-	bc_child_map[parent].push_back(taxon);
+	      parent = parent_node->second;
+	      bc_child_map[parent].push_back(taxon);
       }
     }
-    while (true) {
+    hops_taken = 0;
+    while (hops_taken < max_hops) {
       if(bc_child_map.count(call) == 0) // call already is a leaf
         return call;
       child_vec  = bc_child_map[call];
       if(child_vec.size() >= 2) // ambiguous promotion
         return call;
       call = child_vec.front();
+      hops_taken++;
     }
   }
 

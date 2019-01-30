@@ -735,6 +735,9 @@ void parse_command_line(int argc, char **argv) {
       case 'P' :
         Min_kmer_prune = stoi(optarg);
         break;
+      case 'H' :
+        Min_kmer_prune = stoi(optarg);
+        break;
       default:
         usage();
         break;
@@ -776,6 +779,7 @@ void usage(int exit_code) {
        << "  -M               Preload database files" << endl
        << "  -s               Print read sequence in Kraken output" << endl
        << "  -P               Min kmer abundance to avoid pruning a node" << endl
+       << "  -H               Max hops for promotion" << endl
        << "  -h               Print this message" << endl
        << endl
        << "At least one FASTA or FASTQ file must be specified." << endl
