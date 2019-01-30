@@ -78,6 +78,7 @@ unordered_map<uint32_t, READCOUNTS> taxon_counts; // stats per taxon
 
 int Num_threads = 1;
 int Min_kmer_prune = 10;
+int Max_promotion_hops = 10000;
 vector<string> DB_filenames;
 vector<string> Index_filenames;
 bool Quick_mode = false;
@@ -603,7 +604,7 @@ uint32_t classify_hit_count_map(DNASequence &dna,
                                 unordered_map<uint32_t, uint32_t> bc_hit_counts) {
   uint32_t call = 0;
   call = resolve_tree(read_hit_counts, Parent_map, bc_hit_counts);
-  call = promote_call(call, Parent_map, bc_hit_counts);
+  call = promote_call(call, Max_promotion_hops, Parent_map, bc_hit_counts);
   my_taxon_counts[call].incrementReadCount();
   return call;
 }
@@ -736,7 +737,7 @@ void parse_command_line(int argc, char **argv) {
         Min_kmer_prune = stoi(optarg);
         break;
       case 'H' :
-        Min_kmer_prune = stoi(optarg);
+        Max_promotion_hops = stoi(optarg);
         break;
       default:
         usage();
