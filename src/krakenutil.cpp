@@ -108,6 +108,12 @@ namespace kraken {
     return 1;
   }
 
+  void print_map(unordered_map<uint32_t, uint32_t> foo, string prefix){
+      for(auto it=foo.begin(); it!= foo.end(); ++it){
+	cerr << prefix << it->first << " -> " << it->second << endl;
+      }
+  }
+
   // Remove low abundance paths from the tree demoting their kmer
   // counts to their parents.
   unordered_map<uint32_t, uint32_t> prune_tree(
@@ -138,11 +144,21 @@ namespace kraken {
       	auto parent_node = parent_map.find(taxon);
       	while(parent_node != parent_map.end()){
       	  internal_nodes.insert(parent_node->second);
-      	  if(hit_counts.count(parent_node->second) > 0){
+      	  if(hit_counts.count(parent_node->second) > 0){ 
       	    pruned_counts[parent_node->second] = hit_counts.at(parent_node->second);
       	  }
       	  parent_node = parent_map.find(parent_node->second);
       	}
+      }
+      if(pruned_counts.count(1) == 0 && hit_counts.count(1) == 1){ // '1' is always the root node
+	// This can occur if the root is the only node in the tree being pruned
+	// which happens in the penultimate iteration of a tree where
+	// sum(all_kmers) is less than the orune count.
+	//
+	// However we never remove the root node and in fact we never even treat
+	// it as a leaf.
+	internal_nodes.insert(1);
+	pruned_counts[1] = hit_counts.at(1);
       }
 
       /*
@@ -155,7 +171,7 @@ namespace kraken {
       for(auto it=hit_counts.begin(); it!= hit_counts.end(); ++it){
         taxon = it->first;
         abund = it->second;
-        if(internal_nodes.count(taxon) == 0){
+        if(internal_nodes.count(taxon) == 0){ // is a leaf-node
 	  auto parent_node = parent_map.find(taxon);
           if(abund >= min_abundance || parent_node == parent_map.end()){
             pruned_counts[taxon] = abund;
@@ -176,7 +192,7 @@ namespace kraken {
       pruned_counts = unordered_map<uint32_t, uint32_t>();
       internal_nodes.clear();
     }
-
+    
     return hit_counts;
   }
 
@@ -202,7 +218,7 @@ namespace kraken {
      */
     for (auto it = read_hit_counts.begin(); it != read_hit_counts.end(); ++it) {
       taxon = it->first;
-      if (bc_hit_counts.count(taxon) > 0) { // in pruned-bc-tree
+      if (taxon == 1 || bc_hit_counts.count(taxon) > 0) { // in pruned-bc-tree
         if(pruned_read_hit_counts.count(taxon) > 0){ // this node may be an ancestor of a pruned node 
           pruned_read_hit_counts[taxon] += it->second;
         } else {
