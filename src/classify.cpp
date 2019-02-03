@@ -77,7 +77,8 @@ bool handle_call(DNASequence &dna, ostringstream &koss,
 unordered_map<uint32_t, READCOUNTS> taxon_counts; // stats per taxon
 
 int Num_threads = 1;
-int Min_kmer_prune = 10;
+float Min_kmer_prune = 2.0;
+bool Absolute_prune = true; // If false base prune on BC size
 int Max_promotion_hops = 10000;
 vector<string> DB_filenames;
 vector<string> Index_filenames;
@@ -123,6 +124,7 @@ struct db_status {
 uint64_t total_classified = 0;
 uint64_t total_sequences = 0;
 uint64_t total_bases = 0;
+uint64_t barcodes_processed = 0;
 uint32_t ambig_taxon = -1;
 
 inline bool ends_with(std::string const & value, std::string const & ending)
@@ -385,13 +387,11 @@ void process_file(char *filename) {
   {
     vector<DNASequence> cur_bc;
     ostringstream kraken_output_ss, classified_output_ss, unclassified_output_ss;
-
     while (reader->is_valid()) { // Loop over barcodes
       cur_bc.clear();
       size_t total_nt = 0;
 
       cur_bc = reader->next_bc();
-      
       unordered_map<uint32_t, READCOUNTS> my_taxon_counts;
       uint64_t my_total_classified = 0;
       kraken_output_ss.str("");
@@ -429,7 +429,11 @@ void process_file(char *filename) {
       }
 
       unordered_map<uint32_t, uint32_t> pruned_hit_counts;
-      pruned_hit_counts = prune_tree(Min_kmer_prune, bc_hit_counts, Parent_map);
+      int my_prune = Min_kmer_prune;
+      if(!Absolute_prune){
+	my_prune = Min_kmer_prune * cur_bc.size(); // Floor not round, intentional
+      }
+      pruned_hit_counts = prune_tree(my_prune, bc_hit_counts, Parent_map);
 
       /*
        * Read Assignment Step: Loop over reads in the barcode assigning each read to a taxa
@@ -458,6 +462,7 @@ void process_file(char *filename) {
       // Write output
       #pragma omp critical(write_output)
       {
+	barcodes_processed++;
         total_classified += my_total_classified;
         for (auto it = my_taxon_counts.begin(); it != my_taxon_counts.end(); ++it) {
           taxon_counts[it->first] += std::move(it->second);
@@ -472,15 +477,21 @@ void process_file(char *filename) {
         
         total_sequences += cur_bc.size();
         total_bases += total_nt;
-        if (Print_Progress) {  
+        if (Print_Progress && (barcodes_processed % 100 == 0)) {  
           fprintf(stderr, 
-            "\r Processed %lu sequences (%.2f%% classified)",
-            total_sequences, total_classified * 100.0 / total_sequences
+            "\r Processed %lu barcodes, %lu sequences (%.2f%% classified)",
+		  barcodes_processed, total_sequences, total_classified * 100.0 / total_sequences
           );
         }
       }
     }
   }  // end parallel section
+  if (Print_Progress) {  
+    fprintf(stderr, 
+            "\r Processed %lu barcodes, %lu sequences (%.2f%% classified)",
+	    barcodes_processed, total_sequences, total_classified * 100.0 / total_sequences
+	    );
+  }
 
   delete reader;
 }
@@ -665,7 +676,7 @@ void parse_command_line(int argc, char **argv) {
 
   if (argc > 1 && strcmp(argv[1], "-h") == 0)
     usage(0);
-  while ((opt = getopt(argc, argv, "d:i:t:u:n:m:o:qfcC:U:Ma:r:sI:p:P:H:")) != -1) {
+  while ((opt = getopt(argc, argv, "d:i:t:u:n:m:o:qfcC:U:Ma:r:sI:p:P:H:R:")) != -1) {
     switch (opt) {
       case 'd' :
         DB_filenames.push_back(optarg);
@@ -736,8 +747,11 @@ void parse_command_line(int argc, char **argv) {
         Map_UIDs = true;
         break;
       case 'P' :
-        Min_kmer_prune = stoi(optarg);
+        Min_kmer_prune = stof(optarg);
         break;
+      case 'R':
+        Absolute_prune = false;
+	break
       case 'H' :
         Max_promotion_hops = stoi(optarg);
         break;
@@ -782,6 +796,7 @@ void usage(int exit_code) {
        << "  -M               Preload database files" << endl
        << "  -s               Print read sequence in Kraken output" << endl
        << "  -P               Min kmer abundance to avoid pruning a node" << endl
+       << "  -R               Set prune value based on barcode size (as opposed to absolute)" << endl
        << "  -H               Max hops for promotion" << endl
        << "  -h               Print this message" << endl
        << endl
