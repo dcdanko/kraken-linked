@@ -286,13 +286,23 @@ namespace kraken {
   /*
    * Return the best unambigous promotion present in the barcode.
    */
-  uint32_t promote_call(uint32_t call, uint32_t max_hops,
+  uint32_t promote_call(uint32_t call, uint32_t max_hops, uint32_t min_depth,
                         const unordered_map<uint32_t, uint32_t> &parent_map,
                         const unordered_map<uint32_t, uint32_t> &bc_hit_counts){
     uint32_t taxon, parent, hops_taken;
     unordered_map<uint32_t, vector<uint32_t>> bc_child_map;
     vector<uint32_t> child_vec;
 
+    uint32_t call_depth = 0; // Distance from root
+    uint32_t current_call = call;
+    while (current_call != 1){
+      call_depth++;
+      current_call = parent_map.find(current_call)->second;
+    }
+    if(call_depth < min_depth){
+      return call;
+    }
+    
     for(auto it=bc_hit_counts.begin(); it!= bc_hit_counts.end(); ++it){
       taxon = it->first;
       auto parent_node = parent_map.find(taxon);

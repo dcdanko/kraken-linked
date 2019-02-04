@@ -47,7 +47,7 @@ uint32_t lca(const std::unordered_map<uint32_t, uint32_t> &parent_map, uint32_t 
                         const std::unordered_map<uint32_t, uint32_t> &bc_hit_counts);
 
   // Promote non-specific taxonomy calls
-  uint32_t promote_call(uint32_t call, uint32_t max_hops,
+  uint32_t promote_call(uint32_t call, uint32_t max_hops, uint32_t min_depth,
                         const std::unordered_map<uint32_t, uint32_t> &parent_map,
                         const std::unordered_map<uint32_t, uint32_t> &bc_hit_counts);
 

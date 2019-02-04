@@ -81,6 +81,7 @@ int Num_threads = 1;
 float Min_kmer_prune = 2.0;
 bool Absolute_prune = true; // If false base prune on BC size
 int Max_promotion_hops = 10000;
+int Min_depth_for_promotion = 4; // Only promote reads classified a certain distance from root (classus by default)
 vector<string> DB_filenames;
 vector<string> Index_filenames;
 bool Quick_mode = false;
@@ -618,7 +619,7 @@ uint32_t classify_hit_count_map(DNASequence &dna,
   uint32_t call = 0;
   call = resolve_tree(read_hit_counts, Parent_map, pruned_hit_counts);
   if(call > 0){  // Do not promote reads where *nothing* can be identified
-    call = promote_call(call, Max_promotion_hops, Parent_map, bc_hit_counts);
+    call = promote_call(call, Max_promotion_hops, Min_depth_for_promotion, Parent_map, bc_hit_counts);
   }
   my_taxon_counts[call].incrementReadCount();
   return call;
@@ -678,7 +679,7 @@ void parse_command_line(int argc, char **argv) {
 
   if (argc > 1 && strcmp(argv[1], "-h") == 0)
     usage(0);
-  while ((opt = getopt(argc, argv, "d:i:t:u:n:m:o:qfcC:U:Ma:r:sI:p:P:RH:")) != -1) {
+  while ((opt = getopt(argc, argv, "d:i:t:u:n:m:o:qfcC:U:Ma:r:sI:p:P:RH:D:")) != -1) {
     switch (opt) {
       case 'd' :
         DB_filenames.push_back(optarg);
@@ -757,6 +758,9 @@ void parse_command_line(int argc, char **argv) {
       case 'H' :
         Max_promotion_hops = stoi(optarg);
         break;
+      case 'D':
+	Min_depth_for_promotion = stoi(optarg);
+	break;
       default:
         usage();
         break;
@@ -800,6 +804,7 @@ void usage(int exit_code) {
        << "  -P               Min kmer abundance to avoid pruning a node" << endl
        << "  -R               Set prune value based on barcode size (as opposed to absolute)" << endl
        << "  -H               Max hops for promotion" << endl
+       << "  -D               Minimum distance from root to consider promoting a read" << endl
        << "  -h               Print this message" << endl
        << endl
        << "At least one FASTA or FASTQ file must be specified." << endl
