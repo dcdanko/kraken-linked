@@ -70,7 +70,8 @@ tuple<
 uint32_t classify_hit_count_map(DNASequence &dna,
                        unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
                        unordered_map<uint32_t, uint32_t> read_hit_counts,
-                       unordered_map<uint32_t, uint32_t> bc_hit_counts);
+				unordered_map<uint32_t, uint32_t> bc_hit_counts,
+				unordered_map<uint32_t, uint32_t> pruned_hit_counts);
 bool handle_call(DNASequence &dna, ostringstream &koss,
                        ostringstream &coss, ostringstream &uoss,
                        vector<uint32_t> taxa, vector<uint8_t> ambig_list, uint32_t call);
@@ -445,7 +446,7 @@ void process_file(char *filename) {
        */
       for (size_t i = 0; i < cur_bc.size(); i++) {
         uint32_t call = classify_hit_count_map(
-          cur_bc[i], my_taxon_counts, all_read_hit_counts[i], pruned_hit_counts
+					       cur_bc[i], my_taxon_counts, all_read_hit_counts[i], bc_hit_counts, pruned_hit_counts
         );
 
         my_total_classified += handle_call(
@@ -612,9 +613,10 @@ get_hit_count_map(DNASequence &dna, unordered_map<uint32_t, READCOUNTS>& my_taxo
 uint32_t classify_hit_count_map(DNASequence &dna, 
                                 unordered_map<uint32_t, READCOUNTS>& my_taxon_counts,
                                 unordered_map<uint32_t, uint32_t> read_hit_counts,
-                                unordered_map<uint32_t, uint32_t> bc_hit_counts) {
+				unordered_map<uint32_t, uint32_t> bc_hit_counts,
+                                unordered_map<uint32_t, uint32_t> pruned_hit_counts) {
   uint32_t call = 0;
-  call = resolve_tree(read_hit_counts, Parent_map, bc_hit_counts);
+  call = resolve_tree(read_hit_counts, Parent_map, pruned_hit_counts);
   if(call > 0){  // Do not promote reads where *nothing* can be identified
     call = promote_call(call, Max_promotion_hops, Parent_map, bc_hit_counts);
   }
