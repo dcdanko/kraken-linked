@@ -676,7 +676,7 @@ void parse_command_line(int argc, char **argv) {
 
   if (argc > 1 && strcmp(argv[1], "-h") == 0)
     usage(0);
-  while ((opt = getopt(argc, argv, "d:i:t:u:n:m:o:qfcC:U:Ma:r:sI:p:P:H:R:")) != -1) {
+  while ((opt = getopt(argc, argv, "d:i:t:u:n:m:o:qfcC:U:Ma:r:sI:p:P:RH:")) != -1) {
     switch (opt) {
       case 'd' :
         DB_filenames.push_back(optarg);
@@ -751,7 +751,7 @@ void parse_command_line(int argc, char **argv) {
         break;
       case 'R':
         Absolute_prune = false;
-	break
+	break;
       case 'H' :
         Max_promotion_hops = stoi(optarg);
         break;
