@@ -1,3 +1,10 @@
+# KrakenLinked
+
+This is a modification of KrakenUniq that includes two algorithms specific to Metagenomic Linked Reads: Tree-Pruning and Taxa Promotion. Descriptions of the algorithms may be found in the preprint [here](https://www.biorxiv.org/content/10.1101/549667v1)
+
+This work is still under review and this codebase should be considered preliminary. Most of this repo is unchanged from KrakenUniq.
+
+
 KrakenUniq (formerly KrakenHLL) taxonomic sequence classification system with unique k-mer counting
 ===============================================
 
