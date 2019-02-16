@@ -616,13 +616,15 @@ uint32_t classify_hit_count_map(DNASequence &dna,
                                 unordered_map<uint32_t, uint32_t> read_hit_counts,
 				unordered_map<uint32_t, uint32_t> bc_hit_counts,
                                 unordered_map<uint32_t, uint32_t> pruned_hit_counts) {
-  uint32_t call = 0;
-  call = resolve_tree(read_hit_counts, Parent_map, pruned_hit_counts);
-  if(call > 0){  // Do not promote reads where *nothing* can be identified
-    call = promote_call(call, Max_promotion_hops, Min_depth_for_promotion, Parent_map, bc_hit_counts);
+  uint32_t pruned_call = 0;
+  uint32_t original_call = 0;
+  original_call = resolve_tree(read_hit_counts, Parent_map, bc_hit_counts);
+  pruned_call = resolve_tree(read_hit_counts, Parent_map, pruned_hit_counts);
+  if(pruned_call > 0 && original_call == pruned_call){  // Do not promote reads where *nothing* can be identified or where calls disagree
+    pruned_call = promote_call(pruned_call, Max_promotion_hops, Min_depth_for_promotion, Parent_map, bc_hit_counts);
   }
-  my_taxon_counts[call].incrementReadCount();
-  return call;
+  my_taxon_counts[pruned_call].incrementReadCount();
+  return pruned_call;
 }
 
 
